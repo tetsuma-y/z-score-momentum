@@ -1,0 +1,44 @@
+name: ZScore 90d Daily
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate z-scores and plots
+        run: |
+          mkdir -p data plots
+          python zscore_rotation.py
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/zscore_90d.csv data/zscore_90d_latest.csv plots/heatmap.png
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            UTC_ISO8601=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+            git commit -m "update zscore 90d @ ${UTC_ISO8601}"
+            git push
+          fi
